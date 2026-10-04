@@ -18,6 +18,7 @@ const rand=(a,b)=>a+Math.random()*(b-a);
 let state='menu',score=0,best=+localStorage.getItem('novaBest')||0,wave=1,shake=0,t=0;
 let player,bullets,enemies,ebullets,parts,powers,stars,boss;
 const keys={};
+const DEMO=location.search.includes('demo');
 addEventListener('keydown',e=>{keys[e.code]=true;if(['Space','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.code))e.preventDefault();
   if((e.code==='Enter'||e.code==='Space')&&state!=='play')start();});
 addEventListener('keyup',e=>keys[e.code]=false);
@@ -65,8 +66,16 @@ function shoot(){
 function update(){
   t++;
   stars.forEach(s=>{s.y+=s.s;if(s.y>H){s.y=0;s.x=rand(0,W)}});
-  if(state!=='play'){parts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.l--});parts=parts.filter(p=>p.l>0);return}
+  if(state!=='play'){if(DEMO&&t%150===0)start();parts.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.l--});parts=parts.filter(p=>p.l>0);return}
   const p=player;
+  if(DEMO){ // autopilot for promo footage: ?demo
+    keys.Space=true;keys.ArrowLeft=keys.ArrowRight=false;
+    let tgt=null,bd=1e9;enemies.forEach(e=>{if(e.y>0&&e.y<p.y){const d=Math.abs(e.x-p.x)+(p.y-e.y)*.3;if(d<bd){bd=d;tgt=e}}});
+    let tx=boss?boss.x:tgt?tgt.x:W/2;
+    ebullets.forEach(b=>{if(b.y>p.y-130&&b.y<p.y+10&&Math.abs(b.x-p.x)<28)tx=p.x+(b.x<p.x?60:-60)});
+    if(tx>p.x+6)keys.ArrowRight=true;else if(tx<p.x-6)keys.ArrowLeft=true;
+    p.y+=(H-110-p.y)*.05;
+  }
   let dx=(keys.ArrowRight||keys.KeyD?1:0)-(keys.ArrowLeft||keys.KeyA?1:0);
   let dy=(keys.ArrowDown||keys.KeyS?1:0)-(keys.ArrowUp||keys.KeyW?1:0);
   p.x+=dx*p.speed;p.y+=dy*p.speed;
@@ -134,6 +143,7 @@ function draw(){
   ctx.restore();
 }
 stars=Array.from({length:90},()=>({x:rand(0,W),y:rand(0,H),s:rand(.5,3)}));parts=[];
+if(DEMO)start();
 (function loop(){update();draw();requestAnimationFrame(loop)})();
 </script>
 </body>
