@@ -19,7 +19,7 @@ const W=480,H=720,DEMO=/[?&]demo/.test(location.search);
 function fit(){const s=Math.min(innerWidth/W,innerHeight/H);cv.style.width=W*s+'px';cv.style.height=H*s+'px'}
 addEventListener('resize',fit);fit();
 const rand=(a,b)=>a+Math.random()*(b-a),irand=(a,b)=>Math.floor(rand(a,b+1)),clamp=(v,a,b)=>v<a?a:v>b?b:v;
-let scores=[];try{scores=JSON.parse(localStorage.getItem('novaScores2')||'[]')}catch(e){}
+let scores=[];try{scores=JSON.parse(localStorage.getItem('novaScores2')||'[]').filter(s=>s>0)}catch(e){}
 const bestScore=()=>scores.length?scores[0]:0;
 
 // ---------- audio ----------
@@ -126,7 +126,7 @@ function hurt(){const p=G.p;if(p.inv>0)return;
   p.hp--;p.inv=120;shake(14);G.flash=.35;p.wpn=Math.max(1,p.wpn-1);G.combo=0;G.hitWave=true;boom(p.x,p.y,'#4fc3ff',26);tone(110,.4,'sawtooth',.08,-60);
   if(p.hp<=0)gameOver()}
 function gameOver(){state='over';overT=0;boom(G.p.x,G.p.y,'#4fc3ff',60,2);shake(24);
-  G.newBest=G.score>bestScore()&&G.score>0;scores.push(G.score);scores.sort((a,b)=>b-a);scores=scores.slice(0,5);try{localStorage.setItem('novaScores2',JSON.stringify(scores))}catch(e){}
+  G.newBest=G.score>bestScore()&&G.score>0;if(G.score>0){scores.push(G.score);scores.sort((a,b)=>b-a);scores=scores.slice(0,5)}try{localStorage.setItem('novaScores2',JSON.stringify(scores))}catch(e){}
   G.needName=false;G.submitted=false;
   if(!DEMO&&G.score>0){if(myName){G.submitted=true;lbSubmit(myName,G.score,G.wave)}else{G.needName=true;showNameBox()}}}
 function shoot(){const p=G.p,w=p.wpn;
