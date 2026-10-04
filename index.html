@@ -37,7 +37,7 @@ addEventListener('keyup',e=>{keys[e.code]=false});
 addEventListener('blur',()=>{if(state==='play')state='pause'});
 function ptrPos(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
 cv.addEventListener('pointerdown',e=>{const p=ptrPos(e);try{actx()}catch(_){}
-  if(state==='menu'){startGame();return}
+  if(state==='menu'){startGame(p.y>545&&p.y<590&&p.x>130&&p.x<350);return}
   if(state==='over'){if(overT>40&&!G.needName)startGame();return}
   if(state==='pause'){state='play';return}
   if(state==='upgrade'){const i=cardAt(p);if(i>=0)pickUpgrade(i);return}
@@ -90,11 +90,12 @@ const UPS=[
  {id:'bomb',n:'Bomb Pack',d:'+2 bombs (max 5)',max:9,f:p=>p.bombs=Math.min(5,p.bombs+2)},
  {id:'gun',n:'Weapon Upgrade',d:'+1 weapon level (max 5)',max:4,f:p=>p.wpn=Math.min(5,p.wpn+1)}
 ];
-function startGame(){
-  hideNameBox();
+let tutDone=false;try{tutDone=localStorage.getItem('novaTut')==='1'}catch(e){}
+function startGame(tut){
+  hideNameBox();if(typeof tut!=='boolean')tut=!tutDone&&!DEMO;
   G={score:0,wave:0,t:0,combo:0,comboT:0,maxCombo:0,kills:0,shake:0,flash:0,queue:[],bullets:[],eb:[],en:[],parts:[],rings:[],txt:[],pw:[],ms:[],boss:null,banner:0,bannerTxt:'',bosses:0,cards:null,hitWave:false,newBest:false,msT:0,
     p:{x:W/2,y:H-110,hp:4,maxhp:4,fire:0,inv:0,shield:0,shieldCd:2200,bombs:2,wpn:1,dmg:1,rate:1,speed:4.6,pierce:0,homing:0,wing:0,magnet:60,regen:0,tx:null,ty:null,up:{}}};
-  state='play';nextWave();tone(440,.25,'sine',.06,440);
+  G.tut=tut?{step:0,t:0,ok:false,wait:0,moved:0,shots:0,k0:0,bombed:false,got:false}:null;state='play';nextWave();tone(440,.25,'sine',.06,440);
 }
 function nextWave(){G.wave++;G.hitWave=false;const boss=G.wave%5===0;G.banner=130;G.bannerTxt=boss?'WARNING':'WAVE '+G.wave;spawnWave()}
 function spawnWave(){
@@ -132,8 +133,8 @@ function shoot(){const p=G.p,w=p.wpn;
   const add=(dx,ang)=>G.bullets.push({x:p.x+dx,y:p.y-18,vx:Math.sin(ang)*11,vy:-Math.cos(ang)*11,dmg:p.dmg,pierce:p.pierce,hit:[]});
   if(w===1)add(0,0);else if(w===2){add(-8,0);add(8,0)}else if(w===3){add(0,0);add(-10,-.12);add(10,.12)}else if(w===4){add(-8,0);add(8,0);add(-14,-.2);add(14,.2)}else{add(0,0);add(-9,-.1);add(9,.1);add(-16,-.24);add(16,.24)}
   for(let i=0;i<p.wing;i++){const sx=(p.wing===1?1:(i?1:-1))*38;G.bullets.push({x:p.x+sx,y:p.y,vx:0,vy:-11,dmg:p.dmg*.6,pierce:0,hit:[]})}
-  tone(780,.05,'square',.018,-420)}
-function bomb(){const p=G.p;if(p.bombs<=0)return;p.bombs--;p.inv=Math.max(p.inv,70);G.flash=.7;shake(18);noise(.6,.12);tone(90,.7,'sawtooth',.09,-40);
+  if(G.tut)G.tut.shots++;tone(780,.05,'square',.018,-420)}
+function bomb(){const p=G.p;if(p.bombs<=0)return;p.bombs--;if(G.tut){G.tut.bombed=true;p.bombs++}p.inv=Math.max(p.inv,70);G.flash=.7;shake(18);noise(.6,.12);tone(90,.7,'sawtooth',.09,-40);
   G.rings.push({x:p.x,y:p.y,r:10,m:420,c:'#ffd27a',fast:1});for(const b of G.eb){sparks(b.x,b.y,'#ffd27a',3,2,20);G.score+=1}G.eb.length=0;
   for(const e of G.en)if(!e.dead)hitEnemy(e,12,e.x,e.y);if(G.boss&&!G.boss.enter)hitBoss(30)}
 function hitEnemy(e,d,x,y){if(e.dead)return;e.hp-=d;e.hf=4;sparks(x,y,'#ffe9a8',3,3,14);if(e.hp<=0){e.dead=true;killEnemy(e)}else tone(220,.05,'square',.02)}
@@ -150,7 +151,7 @@ function killBoss(){const b=G.boss;G.boss=null;G.bosses++;G.score+=1000+G.wave*5
 function offerUpgrades(){const p=G.p;const pool=UPS.filter(u=>(p.up[u.id]||0)<u.max);for(let i=pool.length-1;i>0;i--){const j=irand(0,i);[pool[i],pool[j]]=[pool[j],pool[i]]}
   G.cards=pool.slice(0,3);G.cardT=0;state='upgrade'}
 const cardAt=p=>{if(!G.cards)return -1;for(let i=0;i<G.cards.length;i++)if(p.x>40&&p.x<440&&p.y>200+i*130&&p.y<200+i*130+112)return i;return -1};
-function pickUpgrade(i){const u=G.cards&&G.cards[i];if(!u)return;u.f(G.p);G.p.up[u.id]=(G.p.up[u.id]||0)+1;G.cards=null;tone(520,.12,'sine',.06,520);state='play';nextWave()}
+function pickUpgrade(i){const u=G.cards&&G.cards[i];if(!u)return;if(G.tut)finishTut();u.f(G.p);G.p.up[u.id]=(G.p.up[u.id]||0)+1;G.cards=null;tone(520,.12,'sine',.06,520);state='play';nextWave()}
 
 // ---------- autopilot (?demo) ----------
 function auto(p){let tgt=null,bd=1e9;for(const e of G.en){if(e.y>0&&e.y<p.y){const d=Math.abs(e.x-p.x)+(p.y-e.y)*.3;if(d<bd){bd=d;tgt=e}}}
@@ -160,10 +161,28 @@ function auto(p){let tgt=null,bd=1e9;for(const e of G.en){if(e.y>0&&e.y<p.y){con
   const pw=G.pw.find(q=>q.y>H*.4&&(q.t!=='bomb'||p.bombs<4));if(pw&&danger<2)tx=pw.x;
   return{dx:tx>p.x+5?1:tx<p.x-5?-1:0,dy:ty>p.y+8?1:ty<p.y-8?-1:0,bomb:danger>=7&&p.bombs>0}}
 
+
+// ---------- tutorial ----------
+const TUT=[
+ {t:'MOVE',d:'Use WASD or the arrow keys. On touch screens, drag your finger.'},
+ {t:'FIRE',d:'Hold SPACE to shoot. On touch screens you auto-fire while dragging.'},
+ {t:'DESTROY ENEMIES',d:'Shoot 3 enemies. Kill them quickly in a row to build a combo multiplier.'},
+ {t:'BOMB',d:'Press B (touch: BOMB button) to wipe all bullets and hurt everything. Free during the tutorial.'},
+ {t:'POWER-UPS',d:'Grab the falling G to level up your gun. Also S = shield, + = health, B = bomb.'},
+ {t:"YOU'RE READY",d:'Clear the wave, then pick an upgrade. P = pause, SHIFT = precise movement. Good luck!'}
+];
+function finishTut(){G.tut=null;tutDone=true;try{localStorage.setItem('novaTut','1')}catch(e){}}
+function tutUpdate(){const T=G.tut;T.t++;
+  if(T.step<5){let ok=false;
+    if(T.step===0)ok=T.moved>220;else if(T.step===1)ok=T.shots>=12;else if(T.step===2)ok=G.kills-T.k0>=3;else if(T.step===3)ok=T.bombed;else ok=T.got||T.t>900;
+    if(ok&&!T.ok){T.ok=true;T.wait=45;tone(700,.15,'sine',.06,500)}
+    if(T.ok&&--T.wait<=0){T.step++;T.t=0;T.ok=false;if(T.step===2)T.k0=G.kills;if(T.step===4)G.pw.push({x:W/2,y:-10,t:'gun',ph:0})}
+  }else if(T.t>420)finishTut()}
+
 // ---------- update ----------
 function update(){
   if(pressed.KeyM)muted=!muted;
-  if(state==='menu'){menuT++;bgUpdate(.6);if(pressed.Enter||pressed.Space||DEMO)startGame()}
+  if(state==='menu'){menuT++;bgUpdate(.6);if(pressed.KeyH)startGame(true);else if(pressed.Enter||pressed.Space||DEMO)startGame()}
   else if(state==='over'){overT++;bgUpdate(.4);fxUpdate();if(overT>40&&!G.needName&&(pressed.Enter||pressed.Space))startGame();if(DEMO&&overT>200)startGame()}
   else if(state==='pause'){if(pressed.KeyP||pressed.Escape||pressed.Enter)state='play'}
   else if(state==='upgrade'){bgUpdate(.3);fxUpdate();G.cardT++;for(let i=0;i<3;i++)if(pressed['Digit'+(i+1)]||pressed['Numpad'+(i+1)])pickUpgrade(i);if(DEMO&&G.cardT>45)pickUpgrade(irand(0,G.cards.length-1))}
@@ -176,12 +195,12 @@ function fxUpdate(){const g=G;
   for(const t of g.txt){t.y-=.6;t.l--}g.txt=g.txt.filter(t=>t.l>0);
   g.shake*=.88;g.flash*=.9}
 function playUpdate(){
-  const p=G.p;G.t++;bgUpdate(1+Math.min(G.wave*.03,.6));
+  const p=G.p;if(!(G.tut&&G.tut.step<2))G.t++;if(G.tut&&pressed.KeyT)finishTut();bgUpdate(1+Math.min(G.wave*.03,.6));
   let dx=(keys.ArrowRight||keys.KeyD?1:0)-(keys.ArrowLeft||keys.KeyA?1:0),dy=(keys.ArrowDown||keys.KeyS?1:0)-(keys.ArrowUp||keys.KeyW?1:0);
   if(DEMO){const a=auto(p);dx=a.dx;dy=a.dy;if(a.bomb)pressed.KeyB=true}
   const slow=keys.ShiftLeft||keys.ShiftRight;p.focus=slow;const sp=p.speed*(slow?.5:1);if(dx&&dy){dx*=.7071;dy*=.7071}
-  p.x+=dx*sp;p.y+=dy*sp;if(ptr&&p.tx!=null){p.x+=(p.tx-p.x)*.3;p.y+=(p.ty-p.y)*.3}
-  p.x=clamp(p.x,18,W-18);p.y=clamp(p.y,70,H-26);
+  const ox=p.x,oy=p.y;p.x+=dx*sp;p.y+=dy*sp;if(ptr&&p.tx!=null){p.x+=(p.tx-p.x)*.3;p.y+=(p.ty-p.y)*.3}
+  p.x=clamp(p.x,18,W-18);p.y=clamp(p.y,70,H-26);if(G.tut)G.tut.moved+=Math.hypot(p.x-ox,p.y-oy);
   if(p.inv>0)p.inv--;if(p.shield>0)p.shield--;
   if(p.regen&&p.shield<=0){p.shieldCd--;if(p.shieldCd<=0){p.shield=600;p.shieldCd=Math.max(900,2200-p.regen*500);tone(660,.2,'sine',.05,300)}}
   p.fire--;if((keys.Space||keys.KeyJ||ptr||DEMO)&&p.fire<=0){shoot();p.fire=Math.max(4,12/p.rate)}
@@ -226,15 +245,15 @@ function playUpdate(){
   G.eb=G.eb.filter(q=>!q.dead&&q.y>-30&&q.y<H+30&&q.x>-30&&q.x<W+30);
   // power-ups
   for(const u of G.pw){u.y+=1.3;u.ph+=.1;const d=Math.hypot(u.x-p.x,u.y-p.y);if(d<p.magnet){u.x+=(p.x-u.x)*.07;u.y+=(p.y-u.y)*.07}
-    if(d<20){u.dead=true;tone(600,.2,'sine',.07,500);
+    if(d<20){u.dead=true;if(G.tut)G.tut.got=true;tone(600,.2,'sine',.07,500);
       if(u.t==='gun'){if(p.wpn<5){p.wpn++;popText(p.x,p.y-24,'WEAPON UP','#ffe14d')}else{G.score+=200;popText(p.x,p.y-24,'+200','#ffe14d')}}
       else if(u.t==='shield'){p.shield=720;popText(p.x,p.y-24,'SHIELD','#4fc3ff')}
       else if(u.t==='heal'){if(p.hp<p.maxhp){p.hp++;popText(p.x,p.y-24,'+1 HEALTH','#5dff9a')}else{G.score+=200;popText(p.x,p.y-24,'+200','#5dff9a')}}
       else{p.bombs=Math.min(5,p.bombs+1);popText(p.x,p.y-24,'+1 BOMB','#ffd27a')}}}
   G.pw=G.pw.filter(u=>!u.dead&&u.y<H+20);
-  fxUpdate();if(G.banner>0)G.banner--;
+  fxUpdate();if(G.banner>0)G.banner--;if(G.tut)tutUpdate();
   // wave clear
-  if(!G.queue.length&&!G.en.length&&!G.boss&&G.banner<=0&&state==='play'){
+  if(!G.queue.length&&!G.en.length&&!G.boss&&G.banner<=0&&state==='play'&&!(G.tut&&G.tut.step<5)){
     if(!G.hitWave){G.score+=100+G.wave*10;popText(W/2,H/2,'PERFECT WAVE +'+(100+G.wave*10),'#5dff9a')}
     if(G.wave%5===0){p.hp=Math.min(p.maxhp,p.hp+1)}
     offerUpgrades()}
@@ -291,6 +310,13 @@ function drawWorld(){const g=G,t=g.t;
   if(state!=='over')drawPlayer(g.p,t);
   for(const q of g.txt){ctx.globalAlpha=Math.min(1,q.l/20);ctx.fillStyle=q.c;ctx.font='bold 13px monospace';ctx.textAlign='center';ctx.fillText(q.s,q.x,q.y)}ctx.globalAlpha=1}
 function txtC(s,y,size,c,font='system-ui,sans-serif',w='bold'){ctx.textAlign='center';ctx.font=`${w} ${size}px ${font}`;ctx.fillStyle=c;ctx.fillText(s,W/2,y)}
+function wrapTxt(s,w){const out=[];let line='';for(const word of s.split(' ')){const t=line?line+' '+word:word;if(ctx.measureText(t).width>w&&line){out.push(line);line=word}else line=t}out.push(line);return out}
+function drawTut(){const T=G.tut,s=TUT[T.step];if(!s)return;const x=52,y=108,w=376,h=92;
+  ctx.fillStyle='rgba(8,14,40,.8)';ctx.fillRect(x,y,w,h);ctx.strokeStyle=T.ok?'#5dff9a':'#4fc3ff';ctx.lineWidth=2;ctx.strokeRect(x,y,w,h);
+  ctx.textAlign='left';ctx.font='bold 11px monospace';ctx.fillStyle='#8fdcff';ctx.fillText('TUTORIAL '+(T.step+1)+'/6',x+12,y+18);
+  ctx.textAlign='right';ctx.fillStyle='#7f90bb';ctx.fillText('T = skip',x+w-12,y+18);
+  ctx.textAlign='left';ctx.font='bold 20px system-ui,sans-serif';ctx.fillStyle=T.ok?'#5dff9a':'#fff';ctx.fillText((T.ok?'\u2713 ':'')+s.t,x+12,y+44);
+  ctx.font='13px system-ui,sans-serif';ctx.fillStyle='#c9d6ff';wrapTxt(s.d,w-24).slice(0,2).forEach((l,i)=>ctx.fillText(l,x+12,y+64+i*16))}
 function drawHUD(){const g=G,p=g.p;ctx.textAlign='left';ctx.font='bold 18px monospace';ctx.fillStyle='#fff';ctx.fillText('SCORE '+g.score,12,26);
   ctx.textAlign='right';ctx.fillText('WAVE '+g.wave,W-12,26);
   for(let i=0;i<p.maxhp;i++){ctx.fillStyle=i<p.hp?'#ff4d6d':'#3a1f2a';ctx.beginPath();ctx.moveTo(14+i*20,40);ctx.lineTo(24+i*20,40);ctx.lineTo(24+i*20,46);ctx.lineTo(19+i*20,52);ctx.lineTo(14+i*20,46);ctx.closePath();ctx.fill()}
@@ -308,7 +334,7 @@ function drawMenu(){const t=menuT;txtC('NOVA STRIKE',230,58,'#4fc3ff');ctx.globa
   drawPlayer({x:W/2,y:330+Math.sin(t/25)*8,wing:1,shield:0,inv:0},t);
   txtC('Press ENTER or tap to start',420,20,'#fff');ctx.fillStyle='#9fb0d8';
   txtC('Move: WASD / arrows    Fire: SPACE (hold)',470,14,'#9fb0d8');txtC('Bomb: B    Focus (slow, shows hitbox): SHIFT',492,14,'#9fb0d8');txtC('Pause: P    Mute: M    Touch: drag to move, auto-fire',514,14,'#9fb0d8');
-  txtC('Build combos, grab power-ups, pick an upgrade after every wave.',546,13,'#7f90bb');
+  ctx.strokeStyle='#4fc3ff';ctx.lineWidth=1.5;ctx.strokeRect(140,552,200,28);txtC('HOW TO PLAY  (H)',571,14,'#8fdcff');
   if(board&&board.length){txtC('WORLD TOP 3',596,14,'#ffd27a','monospace');board.slice(0,3).forEach((s,i)=>txtC((i+1)+'.  '+s.name+'  '+s.score,618+i*20,15,'#fff','monospace'))}
   else if(scores.length){txtC('YOUR BEST',596,14,'#ffd27a','monospace');scores.slice(0,3).forEach((s,i)=>txtC((i+1)+'.  '+s,618+i*20,15,'#fff','monospace'))}}
 function drawOver(){ctx.fillStyle='rgba(2,3,12,.72)';ctx.fillRect(0,0,W,H);txtC('GAME OVER',200,52,'#ff4d6d');if(G.newBest)txtC('NEW PERSONAL BEST!',236,18,'#ffd27a');
@@ -323,7 +349,7 @@ function draw(){
   ctx.save();if(G&&G.shake>.5&&state!=='pause')ctx.translate(rand(-G.shake,G.shake),rand(-G.shake,G.shake));
   bgDraw();
   if(state==='menu')drawMenu();
-  else{drawWorld();if(state!=='over')drawHUD();
+  else{drawWorld();if(state!=='over')drawHUD();if(G.tut&&state==='play')drawTut();
     if(state==='upgrade')drawCards();if(state==='over')drawOver();
     if(state==='pause'){ctx.fillStyle='rgba(2,3,12,.6)';ctx.fillRect(0,0,W,H);txtC('PAUSED',H/2,44,'#fff');txtC('Press P / tap to resume',H/2+34,16,'#9fb0d8')}
     if(G.flash>.02){ctx.fillStyle=`rgba(255,255,255,${Math.min(.8,G.flash)})`;ctx.fillRect(-10,-10,W+20,H+20)}}
