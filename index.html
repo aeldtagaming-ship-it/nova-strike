@@ -32,18 +32,34 @@ function noise(d,v=.08){if(muted)return;try{const a=actx(),n=Math.floor(a.sample
 
 // ---------- input ----------
 const keys={},pressed={};let ptr=null,state='menu',G=null,overT=0,menuT=0;
-addEventListener('keydown',e=>{if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.repeat)return;keys[e.code]=true;pressed[e.code]=true});
+addEventListener('keydown',e=>{if(e.target&&e.target.tagName==='INPUT')return;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.repeat)return;keys[e.code]=true;pressed[e.code]=true});
 addEventListener('keyup',e=>{keys[e.code]=false});
 addEventListener('blur',()=>{if(state==='play')state='pause'});
 function ptrPos(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
 cv.addEventListener('pointerdown',e=>{const p=ptrPos(e);try{actx()}catch(_){}
   if(state==='menu'){startGame();return}
-  if(state==='over'){if(overT>40)startGame();return}
+  if(state==='over'){if(overT>40&&!G.needName)startGame();return}
   if(state==='pause'){state='play';return}
   if(state==='upgrade'){const i=cardAt(p);if(i>=0)pickUpgrade(i);return}
   if(state==='play'){if(p.x>410&&p.y>630){pressed.KeyB=true;return}ptr={x:p.x,y:p.y,px:G.p.x,py:G.p.y}}});
 cv.addEventListener('pointermove',e=>{if(ptr&&state==='play'){const p=ptrPos(e);G.p.tx=ptr.px+(p.x-ptr.x);G.p.ty=ptr.py+(p.y-ptr.y)}});
 addEventListener('pointerup',()=>{ptr=null});
+
+
+// ---------- online leaderboard (Supabase, free tier) ----------
+const LB_URL='https://psntzmqxehztnsnwbuvb.supabase.co/rest/v1/scores',LB_KEY='sb_publishable_U-3dQ6yumJf3XR7cBqfLVQ_CujrMTRb';
+let board=null,boardErr=false,myName='';try{myName=localStorage.getItem('novaName')||''}catch(e){}
+function lbFetch(){fetch(LB_URL+'?select=name,score,wave&order=score.desc&limit=10',{headers:{apikey:LB_KEY}}).then(r=>r.ok?r.json():Promise.reject()).then(d=>{board=d;boardErr=false}).catch(()=>{boardErr=true})}
+function lbSubmit(name,score,wave){return fetch(LB_URL,{method:'POST',headers:{apikey:LB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({name,score,wave})}).then(r=>{if(!r.ok)throw 0}).then(lbFetch).catch(()=>{boardErr=true})}
+const nameBox=document.createElement('input');nameBox.maxLength=12;nameBox.placeholder='Your name';nameBox.autocomplete='off';
+nameBox.style.cssText='position:fixed;display:none;z-index:5;box-sizing:border-box;font:bold 18px monospace;text-align:center;padding:8px;border-radius:8px;border:2px solid #4fc3ff;background:#0a1030;color:#fff;outline:none';
+document.body.appendChild(nameBox);
+function showNameBox(){const r=cv.getBoundingClientRect(),s=r.width/W;nameBox.style.left=(r.left+(W/2-110)*s)+'px';nameBox.style.top=(r.top+425*s)+'px';nameBox.style.width=220*s+'px';nameBox.style.height=40*s+'px';nameBox.style.fontSize=Math.max(14,18*s)+'px';nameBox.value='';nameBox.style.display='block';setTimeout(()=>nameBox.focus(),50)}
+function hideNameBox(){nameBox.style.display='none';nameBox.blur()}
+function submitName(){const n=(nameBox.value||'').replace(/[^\w .\-]/g,'').trim().slice(0,12)||'PLAYER';myName=n;try{localStorage.setItem('novaName',n)}catch(e){}
+  hideNameBox();if(G){G.needName=false;G.submitted=true;lbSubmit(n,G.score,G.wave)}}
+nameBox.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter')submitName();else if(e.key==='Escape'){hideNameBox();if(G)G.needName=false}});
+lbFetch();
 
 // ---------- visuals: glow, background ----------
 const glowCache={};
@@ -75,6 +91,7 @@ const UPS=[
  {id:'gun',n:'Weapon Upgrade',d:'+1 weapon level (max 5)',max:4,f:p=>p.wpn=Math.min(5,p.wpn+1)}
 ];
 function startGame(){
+  hideNameBox();
   G={score:0,wave:0,t:0,combo:0,comboT:0,maxCombo:0,kills:0,shake:0,flash:0,queue:[],bullets:[],eb:[],en:[],parts:[],rings:[],txt:[],pw:[],ms:[],boss:null,banner:0,bannerTxt:'',bosses:0,cards:null,hitWave:false,newBest:false,msT:0,
     p:{x:W/2,y:H-110,hp:4,maxhp:4,fire:0,inv:0,shield:0,shieldCd:2200,bombs:2,wpn:1,dmg:1,rate:1,speed:4.6,pierce:0,homing:0,wing:0,magnet:60,regen:0,tx:null,ty:null,up:{}}};
   state='play';nextWave();tone(440,.25,'sine',.06,440);
@@ -108,7 +125,9 @@ function hurt(){const p=G.p;if(p.inv>0)return;
   p.hp--;p.inv=120;shake(14);G.flash=.35;p.wpn=Math.max(1,p.wpn-1);G.combo=0;G.hitWave=true;boom(p.x,p.y,'#4fc3ff',26);tone(110,.4,'sawtooth',.08,-60);
   if(p.hp<=0)gameOver()}
 function gameOver(){state='over';overT=0;boom(G.p.x,G.p.y,'#4fc3ff',60,2);shake(24);
-  G.newBest=G.score>bestScore()&&G.score>0;scores.push(G.score);scores.sort((a,b)=>b-a);scores=scores.slice(0,5);try{localStorage.setItem('novaScores2',JSON.stringify(scores))}catch(e){}}
+  G.newBest=G.score>bestScore()&&G.score>0;scores.push(G.score);scores.sort((a,b)=>b-a);scores=scores.slice(0,5);try{localStorage.setItem('novaScores2',JSON.stringify(scores))}catch(e){}
+  G.needName=false;G.submitted=false;
+  if(!DEMO&&G.score>0){if(myName){G.submitted=true;lbSubmit(myName,G.score,G.wave)}else{G.needName=true;showNameBox()}}}
 function shoot(){const p=G.p,w=p.wpn;
   const add=(dx,ang)=>G.bullets.push({x:p.x+dx,y:p.y-18,vx:Math.sin(ang)*11,vy:-Math.cos(ang)*11,dmg:p.dmg,pierce:p.pierce,hit:[]});
   if(w===1)add(0,0);else if(w===2){add(-8,0);add(8,0)}else if(w===3){add(0,0);add(-10,-.12);add(10,.12)}else if(w===4){add(-8,0);add(8,0);add(-14,-.2);add(14,.2)}else{add(0,0);add(-9,-.1);add(9,.1);add(-16,-.24);add(16,.24)}
@@ -145,7 +164,7 @@ function auto(p){let tgt=null,bd=1e9;for(const e of G.en){if(e.y>0&&e.y<p.y){con
 function update(){
   if(pressed.KeyM)muted=!muted;
   if(state==='menu'){menuT++;bgUpdate(.6);if(pressed.Enter||pressed.Space||DEMO)startGame()}
-  else if(state==='over'){overT++;bgUpdate(.4);fxUpdate();if(overT>40&&(pressed.Enter||pressed.Space))startGame();if(DEMO&&overT>200)startGame()}
+  else if(state==='over'){overT++;bgUpdate(.4);fxUpdate();if(overT>40&&!G.needName&&(pressed.Enter||pressed.Space))startGame();if(DEMO&&overT>200)startGame()}
   else if(state==='pause'){if(pressed.KeyP||pressed.Escape||pressed.Enter)state='play'}
   else if(state==='upgrade'){bgUpdate(.3);fxUpdate();G.cardT++;for(let i=0;i<3;i++)if(pressed['Digit'+(i+1)]||pressed['Numpad'+(i+1)])pickUpgrade(i);if(DEMO&&G.cardT>45)pickUpgrade(irand(0,G.cards.length-1))}
   else if(state==='play'){if(pressed.KeyP||pressed.Escape){state='pause'}else playUpdate()}
@@ -290,11 +309,16 @@ function drawMenu(){const t=menuT;txtC('NOVA STRIKE',230,58,'#4fc3ff');ctx.globa
   txtC('Press ENTER or tap to start',420,20,'#fff');ctx.fillStyle='#9fb0d8';
   txtC('Move: WASD / arrows    Fire: SPACE (hold)',470,14,'#9fb0d8');txtC('Bomb: B    Focus (slow, shows hitbox): SHIFT',492,14,'#9fb0d8');txtC('Pause: P    Mute: M    Touch: drag to move, auto-fire',514,14,'#9fb0d8');
   txtC('Build combos, grab power-ups, pick an upgrade after every wave.',546,13,'#7f90bb');
-  if(scores.length){txtC('HIGH SCORES',596,14,'#ffd27a','monospace');scores.slice(0,3).forEach((s,i)=>txtC((i+1)+'.  '+s,618+i*20,15,'#fff','monospace'))}}
-function drawOver(){ctx.fillStyle='rgba(2,3,12,.7)';ctx.fillRect(0,0,W,H);txtC('GAME OVER',210,52,'#ff4d6d');if(G.newBest)txtC('NEW HIGH SCORE!',246,18,'#ffd27a');
-  txtC('Score  '+G.score,300,26,'#fff','monospace');txtC('Wave '+G.wave+'   Kills '+G.kills+'   Best combo '+G.maxCombo+'   Bosses '+G.bosses,334,14,'#b8c6f0','monospace');
-  txtC('HIGH SCORES',390,14,'#ffd27a','monospace');scores.forEach((s,i)=>txtC((i+1)+'.  '+s,416+i*22,16,s===G.score&&G.newBest&&i===0?'#ffd27a':'#fff','monospace'));
-  if(overT>40)txtC('Press ENTER or tap to play again',590,18,'#8fdcff')}
+  if(board&&board.length){txtC('WORLD TOP 3',596,14,'#ffd27a','monospace');board.slice(0,3).forEach((s,i)=>txtC((i+1)+'.  '+s.name+'  '+s.score,618+i*20,15,'#fff','monospace'))}
+  else if(scores.length){txtC('YOUR BEST',596,14,'#ffd27a','monospace');scores.slice(0,3).forEach((s,i)=>txtC((i+1)+'.  '+s,618+i*20,15,'#fff','monospace'))}}
+function drawOver(){ctx.fillStyle='rgba(2,3,12,.72)';ctx.fillRect(0,0,W,H);txtC('GAME OVER',200,52,'#ff4d6d');if(G.newBest)txtC('NEW PERSONAL BEST!',236,18,'#ffd27a');
+  txtC('Score  '+G.score,288,26,'#fff','monospace');txtC('Wave '+G.wave+'   Kills '+G.kills+'   Best combo '+G.maxCombo+'   Bosses '+G.bosses,320,13,'#b8c6f0','monospace');
+  if(G.needName){txtC('Enter your name for the world leaderboard',400,16,'#8fdcff');txtC('ENTER = submit      ESC = skip',496,13,'#9fb0d8','monospace');return}
+  if(board&&board.length){txtC('WORLD TOP 10',366,14,'#ffd27a','monospace');let me=-1;if(G.submitted)me=board.findIndex(s=>s.name===myName&&s.score===G.score);
+    board.slice(0,10).forEach((s,i)=>{ctx.textAlign='left';ctx.font='15px monospace';ctx.fillStyle=i===me?'#5dff9a':'#fff';ctx.fillText(String(i+1).padStart(2)+'. '+s.name.padEnd(12),110,392+i*20);ctx.textAlign='right';ctx.fillText(String(s.score),370,392+i*20)});
+    if(G.submitted&&me<0)txtC('Your score was submitted',604,12,'#9fb0d8','monospace')}
+  else{txtC(boardErr?'Leaderboard offline. Your best scores:':'YOUR BEST SCORES',380,14,'#ffd27a','monospace');scores.forEach((s,i)=>txtC((i+1)+'.  '+s,410+i*22,16,'#fff','monospace'))}
+  if(overT>40)txtC('Press ENTER or tap to play again',650,18,'#8fdcff')}
 function draw(){
   ctx.save();if(G&&G.shake>.5&&state!=='pause')ctx.translate(rand(-G.shake,G.shake),rand(-G.shake,G.shake));
   bgDraw();
