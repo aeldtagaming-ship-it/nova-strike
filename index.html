@@ -345,7 +345,7 @@ function hangarUpdate(){hT++;if(hMsgT>0)hMsgT--;const n=hItems().length;
   if(pressed.Enter||pressed.Space)hAct();
   if(pressed.Escape||pressed.Backspace)state='menu'}
 function hangarClick(p){if(p.y>650){state='menu';return}
-  if(p.y>=246&&p.y<286){hTabTo(Math.min(2,Math.floor(p.x/(W/3))));return}
+  if(p.y>=246&&p.y<286){hTabTo(Math.max(0,Math.min(2,Math.floor((p.x-18)/148))));return}
   if(p.y>=300){const i=Math.floor((p.y-300)/46);if(i>=0&&i<hItems().length){if(i===hSel)hAct();else{hSel=i;tone(560,.04,'sine',.03,0)}}}}
 
 function drawHangar(){const t=hT,hy=215;
@@ -368,7 +368,7 @@ function drawHangar(){const t=hT,hy=215;
   ctx.globalCompositeOperation='lighter';const beam=ctx.createLinearGradient(cx,sy+20,cx,py);beam.addColorStop(0,'rgba(120,190,255,.25)');beam.addColorStop(1,'rgba(120,190,255,0)');ctx.fillStyle=beam;ctx.fillRect(cx-34,sy+20,68,py-sy-20);ctx.globalCompositeOperation='source-over';
   ctx.save();ctx.translate(cx,sy);ctx.scale(1.9,1.9);ctx.translate(-cx,-sy);drawPlayer({x:cx,y:sy,wing:0,shield:0,inv:0,sh:selShip,sk},t);ctx.restore();
   // gun preview shots
-  const bc=SKINS[sk].b;for(let i=0;i<4;i++){const ph=(t*3.2+i*38)%150,by=sy-34-ph;if(by<30)continue;ctx.globalAlpha=Math.max(0,1-ph/150);
+  const bc=SKINS[sk].b;for(let i=0;i<4;i++){const ph=(t*3.2+i*38)%150,by=sy-34-ph;if(by<84)continue;ctx.globalAlpha=Math.max(0,1-ph/150);
     const shots=gn===1?[[-.34,.6],[0,1],[.34,.6]]:gn===2?[[0,2.4]]:gn===3?[[Math.sin(ph/22)*.5,1]]:[[-.1,1],[.1,1]];
     for(const [a,sz] of shots){const bx=cx+(gn===3?Math.sin(ph/22)*14:Math.tan(a)*ph)+(gn===0?(a<0?-8:8):0);ctx.globalCompositeOperation='lighter';glow(bx,by,12*sz,bc,.8);ctx.globalCompositeOperation='source-over';ctx.fillStyle='#fff';ctx.fillRect(bx-1.5*sz,by-8*sz,3*sz,16*sz)}}ctx.globalAlpha=1;
   // header
@@ -377,7 +377,7 @@ function drawHangar(){const t=hT,hy=215;
   txtC(SHIPS[selShip].n+'  |  '+SKINS[sk].n+'  |  '+GUNS[gn].n,236,11,'#9fb0d8','monospace');
   // panel
   ctx.fillStyle='rgba(4,7,18,.86)';ctx.fillRect(10,244,W-20,H-244-62);ctx.strokeStyle='rgba(90,150,255,.4)';ctx.lineWidth=1.5;ctx.strokeRect(10,244,W-20,H-244-62);
-  const tabs=['SKINS','GUNS','SHIP MODS'];tabs.forEach((s,i)=>{const x=i*(W/3)+10,w=W/3-13;ctx.fillStyle=i===hTab?'rgba(60,130,255,.35)':'rgba(255,255,255,.04)';ctx.fillRect(x,250,w,30);if(i===hTab){ctx.strokeStyle='#4fc3ff';ctx.strokeRect(x,250,w,30)}
+  const tabs=['SKINS','GUNS','SHIP MODS'];tabs.forEach((s,i)=>{const x=18+i*148,w=144;ctx.fillStyle=i===hTab?'rgba(60,130,255,.35)':'rgba(255,255,255,.04)';ctx.fillRect(x,250,w,30);if(i===hTab){ctx.strokeStyle='#4fc3ff';ctx.strokeRect(x,250,w,30)}
     ctx.textAlign='center';ctx.font='bold 13px system-ui,sans-serif';ctx.fillStyle=i===hTab?'#fff':'#7f93bd';ctx.fillText(s,x+w/2,270)});
   const L=hItems();L.forEach((it,i)=>{const y=300+i*46,sel=i===hSel;ctx.fillStyle=sel?'rgba(80,150,255,.22)':'rgba(255,255,255,.04)';ctx.fillRect(20,y,W-40,42);if(sel){ctx.strokeStyle='#4fc3ff';ctx.lineWidth=1.5;ctx.strokeRect(20,y,W-40,42)}
     let st='',col='#9fb0d8',sub='';
