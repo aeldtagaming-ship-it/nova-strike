@@ -17,7 +17,7 @@ A fast arcade space shooter that runs in any browser. No install, no dependencie
 ## Features
 - Endless waves with a gentle start and a steep ramp, plus an interactive first-run tutorial
 - Six enemy types: drones, zig-zaggers, armored tanks, kamikaze divers, snipers, splitters. Gold elites from wave 8
-- Four bosses (Dreadnought, Specter, Hydra, Overmind) every 5 waves, with a rage phase below 50% health
+- Five bosses (Dreadnought, Specter, Hydra, Overmind, Tempest) every 5 waves, with a rage phase below 50% health
 - Hazards: meteor showers and laser grids
 - Graze scoring for close bullet passes, with a free bomb every 25 grazes
 - Three ships (Viper, Falcon, Titan), each with a special: Phase Shift, Overdrive, Shockwave
