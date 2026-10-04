@@ -37,7 +37,7 @@ addEventListener('keyup',e=>{keys[e.code]=false});
 addEventListener('blur',()=>{if(state==='play')state='pause'});
 function ptrPos(e){const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height}}
 cv.addEventListener('pointerdown',e=>{const p=ptrPos(e);try{actx()}catch(_){}
-  if(state==='menu'){startGame(p.y>545&&p.y<590&&p.x>130&&p.x<350);return}
+  if(state==='menu'){if(p.y>545&&p.y<590&&p.x>250&&p.x<420)startGame(false,true);else startGame(p.y>545&&p.y<590&&p.x>60&&p.x<230);return}
   if(state==='over'){if(overT>40&&!G.needName)startGame();return}
   if(state==='pause'){state='play';return}
   if(state==='upgrade'){const i=cardAt(p);if(i>=0)pickUpgrade(i);return}
@@ -49,15 +49,18 @@ addEventListener('pointerup',()=>{ptr=null});
 // ---------- online leaderboard (Supabase, free tier) ----------
 const LB_URL='https://psntzmqxehztnsnwbuvb.supabase.co/rest/v1/scores',LB_KEY='sb_publishable_U-3dQ6yumJf3XR7cBqfLVQ_CujrMTRb';
 let board=null,boardErr=false,myName='';try{myName=localStorage.getItem('novaName')||''}catch(e){}
-function lbFetch(){fetch(LB_URL+'?select=name,score,wave&order=score.desc&limit=10',{headers:{apikey:LB_KEY}}).then(r=>r.ok?r.json():Promise.reject()).then(d=>{board=d;boardErr=false}).catch(()=>{boardErr=true})}
-function lbSubmit(name,score,wave){return fetch(LB_URL,{method:'POST',headers:{apikey:LB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify({name,score,wave})}).then(r=>{if(!r.ok)throw 0}).then(lbFetch).catch(()=>{boardErr=true})}
+let daily=null;const todayId=()=>new Date().toISOString().slice(0,10).replace(/-/g,'');
+function mulberry(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function seededWave(fn){if(!daily)return fn();const o=Math.random;Math.random=mulberry(parseInt(daily,10)*31+G.wave*977);try{return fn()}finally{Math.random=o}}
+function lbFetch(d){if(d===undefined)d=daily;fetch(LB_URL+'?select=name,score,wave&order=score.desc&limit=10&day='+(d?'eq.'+d:'is.null'),{headers:{apikey:LB_KEY}}).then(r=>r.ok?r.json():Promise.reject()).then(d=>{board=d;boardErr=false}).catch(()=>{boardErr=true})}
+function lbSubmit(name,score,wave,day){return fetch(LB_URL,{method:'POST',headers:{apikey:LB_KEY,'Content-Type':'application/json',Prefer:'return=minimal'},body:JSON.stringify(day?{name,score,wave,day}:{name,score,wave})}).then(r=>{if(!r.ok)throw 0}).then(()=>lbFetch(day||null)).catch(()=>{boardErr=true})}
 const nameBox=document.createElement('input');nameBox.maxLength=12;nameBox.placeholder='Your name';nameBox.autocomplete='off';
 nameBox.style.cssText='position:fixed;display:none;z-index:5;box-sizing:border-box;font:bold 18px monospace;text-align:center;padding:8px;border-radius:8px;border:2px solid #4fc3ff;background:#0a1030;color:#fff;outline:none';
 document.body.appendChild(nameBox);
 function showNameBox(){const r=cv.getBoundingClientRect(),s=r.width/W;nameBox.style.left=(r.left+(W/2-110)*s)+'px';nameBox.style.top=(r.top+425*s)+'px';nameBox.style.width=220*s+'px';nameBox.style.height=40*s+'px';nameBox.style.fontSize=Math.max(14,18*s)+'px';nameBox.value='';nameBox.style.display='block';setTimeout(()=>nameBox.focus(),50)}
 function hideNameBox(){nameBox.style.display='none';nameBox.blur()}
 function submitName(){const n=(nameBox.value||'').replace(/[^\w .\-]/g,'').trim().slice(0,12)||'PLAYER';myName=n;try{localStorage.setItem('novaName',n)}catch(e){}
-  hideNameBox();if(G){G.needName=false;G.submitted=true;lbSubmit(n,G.score,G.wave)}}
+  hideNameBox();if(G){G.needName=false;G.submitted=true;lbSubmit(n,G.score,G.wave,G.daily)}}
 nameBox.addEventListener('keydown',e=>{e.stopPropagation();if(e.key==='Enter')submitName();else if(e.key==='Escape'){hideNameBox();if(G)G.needName=false}});
 lbFetch();
 
@@ -92,14 +95,15 @@ const UPS=[
  {id:'gun',n:'Weapon Upgrade',d:'+1 weapon level (max 5)',max:4,f:p=>p.wpn=Math.min(5,p.wpn+1)}
 ];
 let tutDone=false;try{tutDone=localStorage.getItem('novaTut')==='1'}catch(e){}
-function startGame(tut){
-  hideNameBox();if(typeof tut!=='boolean')tut=!tutDone&&!DEMO;
+function startGame(tut,isDaily){
+  hideNameBox();daily=isDaily?todayId():null;if(typeof tut!=='boolean')tut=!tutDone&&!DEMO;if(isDaily)tut=false;lbFetch(daily);
   G={score:0,wave:0,t:0,combo:0,comboT:0,maxCombo:0,kills:0,shake:0,flash:0,queue:[],bullets:[],eb:[],en:[],parts:[],rings:[],txt:[],pw:[],ms:[],boss:null,banner:0,bannerTxt:'',bosses:0,cards:null,hitWave:false,newBest:false,msT:0,
     p:{x:W/2,y:H-110,hp:4,maxhp:4,fire:0,inv:0,shield:0,shieldCd:2200,bombs:2,wpn:1,dmg:1,rate:1,speed:4.6,pierce:0,homing:0,wing:0,magnet:60,regen:0,tx:null,ty:null,up:{}}};
-  G.tut=tut?{step:0,t:0,ok:false,wait:0,moved:0,shots:0,k0:0,bombed:false,got:false}:null;state='play';nextWave();tone(440,.25,'sine',.06,440);
+  G.tut=tut?{step:0,t:0,ok:false,wait:0,moved:0,shots:0,k0:0,bombed:false,got:false}:null;state='play';G.daily=daily;nextWave();if(daily)popText(W/2,H/2+60,'DAILY CHALLENGE '+daily.slice(4,6)+'/'+daily.slice(6),'#ffd27a');tone(440,.25,'sine',.06,440);
 }
 function nextWave(){G.wave++;G.hitWave=false;const boss=G.wave%5===0;G.banner=130;G.bannerTxt=boss?'WARNING':'WAVE '+G.wave;spawnWave()}
-function spawnWave(){
+function spawnWave(){return seededWave(spawnWave0)}
+function spawnWave0(){
   const w=G.wave;if(w%5===0){const n=w/5,k=(n-1)%4,hp=110+w*16;G.boss={x:W/2,y:-90,hp,max:hp,r:46,t:0,kind:k,ph:0,f:60,f2:100,enter:true,hf:0,n,name:['DREADNOUGHT','SPECTER','HYDRA','OVERMIND'][k]};return}
   let budget=3+w*1.7+Math.max(0,w-8)*1.3;const avail=['drone','zig'];if(w>=3)avail.push('tank','diver');if(w>=4)avail.push('sniper');if(w>=6)avail.push('splitter');
   const cost={drone:1,zig:1.4,tank:3.5,diver:1.4,sniper:3,splitter:3.2};let tm=70;const form=irand(0,2);
@@ -129,7 +133,7 @@ function hurt(){const p=G.p;if(p.inv>0)return;
 function gameOver(){state='over';overT=0;boom(G.p.x,G.p.y,'#4fc3ff',60,2);shake(24);
   G.newBest=G.score>bestScore()&&G.score>0;if(G.score>0){scores.push(G.score);scores.sort((a,b)=>b-a);scores=scores.slice(0,5)}try{localStorage.setItem('novaScores2',JSON.stringify(scores))}catch(e){}
   G.needName=false;G.submitted=false;
-  if(!DEMO&&G.score>0){if(myName){G.submitted=true;lbSubmit(myName,G.score,G.wave)}else{G.needName=true;showNameBox()}}}
+  if(!DEMO&&G.score>0){if(myName){G.submitted=true;lbSubmit(myName,G.score,G.wave,G.daily)}else{G.needName=true;showNameBox()}}}
 function shoot(){const p=G.p,w=p.wpn;
   const add=(dx,ang)=>G.bullets.push({x:p.x+dx,y:p.y-18,vx:Math.sin(ang)*11,vy:-Math.cos(ang)*11,dmg:p.dmg,pierce:p.pierce,hit:[]});
   if(w===1)add(0,0);else if(w===2){add(-8,0);add(8,0)}else if(w===3){add(0,0);add(-10,-.12);add(10,.12)}else if(w===4){add(-8,0);add(8,0);add(-14,-.2);add(14,.2)}else{add(0,0);add(-9,-.1);add(9,.1);add(-16,-.24);add(16,.24)}
@@ -183,7 +187,7 @@ function tutUpdate(){const T=G.tut;T.t++;
 // ---------- update ----------
 function update(){
   if(pressed.KeyM)muted=!muted;
-  if(state==='menu'){menuT++;bgUpdate(.6);if(pressed.KeyH)startGame(true);else if(pressed.Enter||pressed.Space||DEMO)startGame()}
+  if(state==='menu'){menuT++;bgUpdate(.6);if(pressed.KeyD)startGame(false,true);else if(pressed.KeyH)startGame(true);else if(pressed.Enter||pressed.Space||DEMO)startGame()}
   else if(state==='over'){overT++;bgUpdate(.4);fxUpdate();if(overT>40&&!G.needName&&(pressed.Enter||pressed.Space))startGame();if(DEMO&&overT>200)startGame()}
   else if(state==='pause'){if(pressed.KeyP||pressed.Escape||pressed.Enter)state='play'}
   else if(state==='upgrade'){bgUpdate(.3);fxUpdate();G.cardT++;for(let i=0;i<3;i++)if(pressed['Digit'+(i+1)]||pressed['Numpad'+(i+1)])pickUpgrade(i);if(DEMO&&G.cardT>45)pickUpgrade(irand(0,G.cards.length-1))}
@@ -339,13 +343,13 @@ function drawMenu(){const t=menuT;txtC('NOVA STRIKE',230,58,'#4fc3ff');ctx.globa
   drawPlayer({x:W/2,y:330+Math.sin(t/25)*8,wing:1,shield:0,inv:0},t);
   txtC('Press ENTER or tap to start',420,20,'#fff');ctx.fillStyle='#9fb0d8';
   txtC('Move: WASD / arrows    Fire: SPACE (hold)',470,14,'#9fb0d8');txtC('Bomb: B    Focus (slow, shows hitbox): SHIFT',492,14,'#9fb0d8');txtC('Pause: P    Mute: M    Touch: drag to move, auto-fire',514,14,'#9fb0d8');
-  ctx.strokeStyle='#4fc3ff';ctx.lineWidth=1.5;ctx.strokeRect(140,552,200,28);txtC('HOW TO PLAY  (H)',571,14,'#8fdcff');
+  ctx.strokeStyle='#4fc3ff';ctx.lineWidth=1.5;ctx.strokeRect(60,552,170,28);ctx.textAlign='center';ctx.font='bold 13px system-ui,sans-serif';ctx.fillStyle='#8fdcff';ctx.fillText('HOW TO PLAY (H)',145,571);ctx.strokeStyle='#ffd27a';ctx.strokeRect(250,552,170,28);ctx.textAlign='center';ctx.fillStyle='#ffd27a';ctx.font='bold 13px system-ui,sans-serif';ctx.fillText('DAILY CHALLENGE (D)',335,571);
   if(board&&board.length){txtC('WORLD TOP 3',596,14,'#ffd27a','monospace');board.slice(0,3).forEach((s,i)=>txtC((i+1)+'.  '+s.name+'  '+s.score,618+i*20,15,'#fff','monospace'))}
   else if(scores.length){txtC('YOUR BEST',596,14,'#ffd27a','monospace');scores.slice(0,3).forEach((s,i)=>txtC((i+1)+'.  '+s,618+i*20,15,'#fff','monospace'))}}
 function drawOver(){ctx.fillStyle='rgba(2,3,12,.72)';ctx.fillRect(0,0,W,H);txtC('GAME OVER',200,52,'#ff4d6d');if(G.newBest)txtC('NEW PERSONAL BEST!',236,18,'#ffd27a');
   txtC('Score  '+G.score,288,26,'#fff','monospace');txtC('Wave '+G.wave+'  Kills '+G.kills+'  Graze '+(G.graze||0)+'  Combo '+G.maxCombo+'  Bosses '+G.bosses,320,13,'#b8c6f0','monospace');
   if(G.needName){txtC('Enter your name for the world leaderboard',400,16,'#8fdcff');txtC('ENTER = submit      ESC = skip',496,13,'#9fb0d8','monospace');return}
-  if(board&&board.length){txtC('WORLD TOP 10',366,14,'#ffd27a','monospace');let me=-1;if(G.submitted)me=board.findIndex(s=>s.name===myName&&s.score===G.score);
+  if(board&&board.length){txtC(G.daily?'TODAY TOP 10':'WORLD TOP 10',366,14,'#ffd27a','monospace');let me=-1;if(G.submitted)me=board.findIndex(s=>s.name===myName&&s.score===G.score);
     board.slice(0,10).forEach((s,i)=>{ctx.textAlign='left';ctx.font='15px monospace';ctx.fillStyle=i===me?'#5dff9a':'#fff';ctx.fillText(String(i+1).padStart(2)+'. '+s.name.padEnd(12),110,392+i*20);ctx.textAlign='right';ctx.fillText(String(s.score),370,392+i*20)});
     if(G.submitted&&me<0)txtC('Your score was submitted',604,12,'#9fb0d8','monospace')}
   else{txtC(boardErr?'Leaderboard offline. Your best scores:':'YOUR BEST SCORES',380,14,'#ffd27a','monospace');scores.forEach((s,i)=>txtC((i+1)+'.  '+s,410+i*22,16,'#fff','monospace'))}
