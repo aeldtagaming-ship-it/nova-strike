@@ -233,7 +233,7 @@ function drawPlayer(p,t){const x=p.x,y=p.y;
   poly([[-24,14],[-15,6],[-12,12]],'#ff4d6d',x,y);poly([[24,14],[15,6],[12,12]],'#ff4d6d',x,y);
   ctx.fillStyle='#10244f';ctx.beginPath();ctx.ellipse(x,y-4,2.8,6,0,0,6.283);ctx.fill();
   ctx.globalCompositeOperation='lighter';glow(x-24,y+14,8,'#ff4d6d',.6);glow(x+24,y+14,8,'#ff4d6d',.6);ctx.globalCompositeOperation='source-over';
-  for(let i=0;i<p.wing;i++){const sx=(p.wing===1?1:(i?1:-1))*38+Math.sin(t/20+i)*2,sy=y+8;poly([[0,-10],[7,8],[0,5],[-7,8]],'#5dd6ff',sx,sy);ctx.globalCompositeOperation='lighter';glow(sx,sy+8,10,'#3fa9ff',.7);ctx.globalCompositeOperation='source-over'}
+  for(let i=0;i<p.wing;i++){const sx=x+(p.wing===1?1:(i?1:-1))*38+Math.sin(t/20+i)*2,sy=y+8;poly([[0,-10],[7,8],[0,5],[-7,8]],'#5dd6ff',sx,sy);ctx.globalCompositeOperation='lighter';glow(sx,sy+8,10,'#3fa9ff',.7);ctx.globalCompositeOperation='source-over'}
   if(p.shield>0){const a=p.shield<120?(Math.floor(p.shield/6)%2?.9:.3):.9;ctx.strokeStyle=`rgba(90,200,255,${a})`;ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,29+Math.sin(t/8)*1.5,0,6.283);ctx.stroke();ctx.globalCompositeOperation='lighter';glow(x,y,38,'#3fa9ff',.35*a);ctx.globalCompositeOperation='source-over'}
   if(p.focus){ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x,y,3.2,0,6.283);ctx.fill();ctx.strokeStyle='#ff4fa3';ctx.lineWidth=1;ctx.beginPath();ctx.arc(x,y,6,0,6.283);ctx.stroke()}}
 function drawEnemy(e){const x=e.x,y=e.y,f=e.hf>0;
