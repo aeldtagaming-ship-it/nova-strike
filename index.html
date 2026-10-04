@@ -366,8 +366,8 @@ function drawCards(){ctx.fillStyle='rgba(2,3,12,.72)';ctx.fillRect(0,0,W,H);txtC
     ctx.textAlign='left';ctx.fillStyle='#4fc3ff';ctx.font='bold 26px monospace';ctx.fillText(String(i+1),58,y+66);ctx.fillStyle='#fff';ctx.font='bold 22px system-ui,sans-serif';ctx.fillText(u.n,100,y+44);
     ctx.fillStyle='#b8c6f0';ctx.font='15px system-ui,sans-serif';ctx.fillText(u.d,100,y+72);ctx.fillStyle='#ffd27a';ctx.font='bold 12px monospace';ctx.fillText('LEVEL '+lv+' > '+(lv+1)+'  /  '+u.max,100,y+96)})}
 function drawMenu(){const t=menuT;txtC('NOVA STRIKE',230,58,'#4fc3ff');ctx.globalCompositeOperation='lighter';glow(W/2,215,200,'#2f6bff',.25+Math.sin(t/30)*.08);ctx.globalCompositeOperation='source-over';
-  drawPlayer({x:W/2,y:330+Math.sin(t/25)*8,wing:1,shield:0,inv:0,sh:selShip},t);txtC('<   '+SHIPS[selShip].n+'   >',386,15,'#fff');txtC(SHIPS[selShip].d+'  |  HP '+SHIPS[selShip].hp+'  BOMBS '+SHIPS[selShip].bombs,402,11,'#9fb0d8');
-  txtC('Press ENTER or tap to start',420,20,'#fff');ctx.fillStyle='#9fb0d8';
+  drawPlayer({x:W/2,y:330+Math.sin(t/25)*8,wing:1,shield:0,inv:0,sh:selShip},t);txtC('<   '+SHIPS[selShip].n+'   >',386,15,'#fff');txtC(SHIPS[selShip].d+'  |  HP '+SHIPS[selShip].hp+'  BOMBS '+SHIPS[selShip].bombs,404,11,'#9fb0d8');
+  txtC('Press ENTER or tap to start',432,20,'#fff');ctx.fillStyle='#9fb0d8';
   txtC('Move: WASD / arrows    Fire: SPACE (hold)',470,14,'#9fb0d8');txtC('Bomb: B    Focus (slow, shows hitbox): SHIFT',492,14,'#9fb0d8');txtC('Pause: P    Mute: M    Touch: drag to move, auto-fire',514,14,'#9fb0d8');
   ctx.strokeStyle='#4fc3ff';ctx.lineWidth=1.5;ctx.strokeRect(60,552,170,28);ctx.textAlign='center';ctx.font='bold 13px system-ui,sans-serif';ctx.fillStyle='#8fdcff';ctx.fillText('HOW TO PLAY (H)',145,571);ctx.strokeStyle='#ffd27a';ctx.strokeRect(250,552,170,28);ctx.textAlign='center';ctx.fillStyle='#ffd27a';ctx.font='bold 13px system-ui,sans-serif';ctx.fillText('DAILY CHALLENGE (D)',335,571);
   if(board&&board.length){txtC('WORLD TOP 3',596,14,'#ffd27a','monospace');board.slice(0,3).forEach((s,i)=>txtC((i+1)+'.  '+s.name+'  '+s.score,618+i*20,15,'#fff','monospace'))}
