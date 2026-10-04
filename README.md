@@ -18,7 +18,8 @@ A fast arcade space shooter that runs in any browser. No install, no dependencie
 - Three boss fights (Dreadnought, Specter, Hydra) every 5 waves, with a rage phase below 50% health
 - Pick 1 of 3 upgrades after every wave: rapid fire, heavy rounds, piercing, homing missiles, wingman drones, magnet, shield regen, hull plating, bombs, weapon level
 - Combo multiplier, perfect-wave bonus, power-ups (G weapon, S shield, + health, B bomb)
-- Glow effects, nebula parallax background, particles, screen shake, synthesized sound, local top-5 high scores
+- Global online leaderboard (world top 10, powered by Supabase) plus local top-5 scores
+- Glow effects, nebula parallax background, particles, screen shake, synthesized sound
 - `?demo` in the URL runs an autopilot, handy for recording footage
 
 Built with AI assistance. Single HTML file, plain canvas and JavaScript.
